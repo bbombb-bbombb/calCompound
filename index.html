@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html>
+<script src="2.9.4chart.js"></script>
+<body onload="startPage()">
+<!--<canvas id="myChart" style="width:100%;max-width:700px"></canvas>-->
+<table>
+    <tr><td>start Amount</td><td><input type="number" id="startAmount" name="startAmount" value="3000" onchange="changeValue()" style="width: 50px;">$</td></tr>
+    <tr><td>Total gas fee</td><td><input type="number" id="totalGasFee" name="totalGasFee" value=1 onchange="changeValue()"  style="width: 50px;">$</td>
+        <td>BNB price</td><td><input type="number" id="bnbPrice" name="bnbPrice" value=300 onchange="changeValue()"  style="width: 50px;">$</td>
+        <td>gas fee</td><td><input type="number" id="gasFee" name="gasFee" value=0.003 onchange="changeValue()"  style="width: 50px;">BNB</td></tr>
+    
+    <tr><td>APR </td><td><input type="number" id="apr" name="apr" value="30" onchange="changeValue()"  style="width: 50px;">%</td></tr>
+    <tr><td>want to see last amount at day </td><td><input type="number" id="lastDay" name="lastDay" value="365" onchange="changeValue()"  style="width: 50px;"></td></tr></table>
+</table>
+
+<p id="test"></p>
+<canvas id="myChart2" style="max-width:800px;max-height: 500px"></canvas>
+<table></table><tr><td>Compound every</td><td><input type="number" id="bestCompoundAt" name="bestCompoundAt" onchange="changeGraph()" >days </td>
+                    <td>you will get </td><td><input type="number" id="bestCompound" name="bestCompound" disabled>$ at lastDay</td></tr></table>
+<canvas id="myChart3" style="max-width:800px;max-height: 500px"></canvas>
+
+
+
+
+
+
+
+
+<script type="text/javascript">
+function startPage(){
+    changeValue();
+}
+
+
+
+
+var chartTest=null;
+var chartTest3=null;
+
+function changeValue(){
+    var zValues3=[];
+    //var g=document.getElementById("totalGasFee").value;//not less than c*p gas fee
+    var bnbPrice=document.getElementById("bnbPrice").value;
+    var gas=document.getElementById("gasFee").value;
+    var g=bnbPrice*gas;
+    document.getElementById("totalGasFee").value=g;
+    var lastDay=document.getElementById("lastDay").value;
+
+    var p=document.getElementById("apr").value/(365*100); //apr per day
+    var c=0; //compound every c days
+    var startAmount=Number(document.getElementById("startAmount").value);
+    
+
+    var s;
+
+    //this value need to reset every time
+    var xValues3=[];
+    var yValues3=[];
+    for(c=1;c<=120;c++)
+    {
+        var tValues2 = [];
+        var yValues2 = [];
+        var zValues2 = [];
+        generateData2("c*s-g",0,lastDay,1);
+        zValues3.push(zValues2[lastDay]);
+        yValues3.push(zValues2[lastDay]);
+        xValues3.push(c);
+    }
+    var x=0;
+    var zMaxValue=0;
+    var xMax=0;
+    document.getElementById("test").innerHTML="";
+    while(x < zValues3.length){ 
+        //zValues3[x] = zValues3[x].toFixed(2); 
+        if(zValues3[x]>zMaxValue){
+            zMaxValue=zValues3[x];
+            xMax=x+1;
+        }
+        //document.getElementById("test").innerHTML=document.getElementById("test").innerHTML+" , "+zValues3[x].toFixed(1);
+        x++;
+    }
+    document.getElementById("bestCompound").value=zMaxValue.toFixed(2);
+    document.getElementById("bestCompoundAt").value=xMax;
+    //document.getElementById("test").innerHTML=zValues3;
+
+    c=xMax-1;
+    if(c==0)c=1; //when it need to compound every 0 it need to be 1
+    //this value need to reset every time
+    var tValues2 = [];
+    var yValues2 = [];
+    var zValues2 = [];
+    generateData2("c*s-g",0,lastDay,1);
+
+    function generateData2(value, i1, i2, step = 1) {
+      for (let t = i1; t <= i2; t += step) {
+        
+            
+        if(t<c){
+            zValues2.push(startAmount);
+        }else{
+            if(t%c==0) //this will add value to z every  c days
+            {
+                s=zValues2[t-1]*p;
+                zValues2.push(zValues2[t-1]+eval("(c*s)-g"));
+            }else if(t==lastDay){ //this will add a little compound at the remain to the last value too
+                s=zValues2[t-1]*p;
+                var cc=lastDay%c;
+                zValues2.push(zValues2[t-1]+eval("(cc*s)-g"));
+            }else{ //when start will add the first one
+                zValues2.push(zValues2[t-1]);
+            }
+        }
+        tValues2.push(t);
+        
+      }
+    }
+
+
+
+
+
+
+
+
+    if(chartTest!=null)
+    {
+        chartTest.destroy();
+    }
+    chartTest=new Chart("myChart2", {
+      type: "line",
+      data: {
+        labels: tValues2,
+        datasets: [{
+          fill: false,
+          pointRadius: 1,
+          borderColor: "rgba(255,0,0,0.5)",
+          data: zValues2
+        }]
+      },    
+      options: {
+        legend: {display: false},
+        title: {
+          display: true,
+          text: "optimal solution",
+          fontSize: 16
+        },
+        scales: {
+            yAxes: [{
+                display: true,
+                ticks: {
+                    suggestedMin: document.getElementById("startAmount").value    // minimum will be 0, unless there is a lower value.
+                // OR //
+                //beginAtZero: true   // minimum value will be 0.
+                },
+                scaleLabel: {
+                    display: true,
+                    labelString: '$ get in everyday'
+                  }
+            }],
+            xAxes:[{
+                display:true,
+                scaleLabel:{
+                    display:true,
+                    labelString: 'Days'
+                }
+            }]
+        }
+      }
+
+    });
+
+
+
+
+
+    if(chartTest3!=null)
+    {
+        chartTest3.destroy();
+    }
+    chartTest3=new Chart("myChart3", {
+      type: "line",
+      data: {
+        labels: xValues3,
+        datasets: [{
+          fill: false,
+          pointRadius: 1,
+          borderColor: "rgba(255,0,0,0.5)",
+          data: yValues3
+        }]
+      },    
+      options: {
+        legend: {display: false},
+        title: {
+          display: true,
+          text: "lastDay days $ return when compound every x days",
+          fontSize: 16
+        },
+        scales: {
+            yAxes: [{
+                display: true,
+                ticks: {
+                    suggestedMin: document.getElementById("startAmount").value    // minimum will be 0, unless there is a lower value.
+                // OR //
+                //beginAtZero: true   // minimum value will be 0.
+                },
+                scaleLabel: {
+                    display: true,
+                    labelString: '$ get at lastDay'
+                  }
+            }],
+            xAxes:[{
+                display:true,
+                scaleLabel:{
+                    display:true,
+                    labelString: 'Compound Every'
+                }
+            }]
+        }
+    }
+
+    });
+
+
+
+
+
+
+
+
+    //myChart.update();
+    //document.getElementById("test").innerHTML=zValues2[364].toFixed(2);
+}
+function changeGraph(){
+    var zValues3=[];
+    //var g=document.getElementById("totalGasFee").value;//not less than c*p gas fee
+    var bnbPrice=document.getElementById("bnbPrice").value;
+    var gas=document.getElementById("gasFee").value;
+    var g=bnbPrice*gas;
+    document.getElementById("totalGasFee").value=g;
+
+
+    var lastDay=document.getElementById("lastDay").value;
+    var p=document.getElementById("apr").value/(365*100); //apr per day
+    var c=0; //compound every c days
+    var startAmount=Number(document.getElementById("startAmount").value);
+
+    var s;
+    var tValues2 = [];
+    var yValues2 = [];
+    var zValues2 = [];
+    c=document.getElementById("bestCompoundAt").value;
+    generateData2("c*s-g",0,lastDay,1);
+
+    function generateData2(value, i1, i2, step = 1) {
+      for (let t = i1; t <= i2; t += step) {
+        
+            
+        if(t<c){
+            zValues2.push(startAmount);
+        }else{
+            if(t%c==0) //this will add value to z every  c days
+            {
+                s=zValues2[t-1]*p;
+                zValues2.push(zValues2[t-1]+eval("(c*s)-g"));
+            }else if(t==lastDay){ //this will add a little compound at the remain to the last value too
+                s=zValues2[t-1]*p;
+                var cc=lastDay%c;
+                zValues2.push(zValues2[t-1]+eval("(cc*s)-g"));
+            }else{ //when start will add the first one
+                zValues2.push(zValues2[t-1]);
+            }
+        }
+        tValues2.push(t);
+        
+      }
+    }
+
+    document.getElementById("bestCompound").value=zValues2[lastDay].toFixed(2);
+
+
+
+
+    if(chartTest!=null)
+    {
+        chartTest.destroy();
+    }
+    chartTest=new Chart("myChart2", {
+      type: "line",
+      data: {
+        labels: tValues2,
+        datasets: [{
+          fill: false,
+          pointRadius: 1,
+          borderColor: "rgba(255,0,0,0.5)",
+          data: zValues2
+        }]
+      },    
+      options: {
+        legend: {display: false},
+        title: {
+          display: true,
+          text: "optimal solution",
+          fontSize: 16
+        },
+        scales: {
+            yAxes: [{
+                display: true,
+                ticks: {
+                    suggestedMin: document.getElementById("startAmount").value    // minimum will be 0, unless there is a lower value.
+                // OR //
+                //beginAtZero: true   // minimum value will be 0.
+                },
+                scaleLabel: {
+                    display: true,
+                    labelString: '$ get in everyday'
+                  }
+            }],
+            xAxes:[{
+                display:true,
+                scaleLabel:{
+                    display:true,
+                    labelString: 'Days'
+                }
+            }]
+        }
+      }
+
+    });
+
+
+
+
+
+}
+
+</script>
+
+<p id="demo"></p>
+
+<!--<script async src="https://static.coinstats.app/widgets/coin-price-widget.js"></script>
+<coin-stats-ticker-widget coin-id="dopple-finance" locale="en" currency="USD" rank-background="#FFA959" background="#1C1B1B" status-up-color="#74D492" status-down-color="#FE4747" rank-text-color="#1C1B1B" text-color="#FFFFFF" border-color="rgba(255,255,255,0.15)" type="large" height="182" width="350"></coin-stats-ticker-widget>-->
+</body>
+</html>
+
+
